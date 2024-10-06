@@ -3,8 +3,9 @@ import { Readable } from 'node:stream';
 
 @Injectable()
 export class JsonService {
-  createBigJsonFileStream(rowsLength = 1000000000): Readable {
+  createBigJsonFileStream(rowsLength = 25000000): Readable {
     let currentRow = 1;
+    rowsLength = this.getRandomLengthFromRange(rowsLength / 2, rowsLength);
 
     const stream = new Readable({
       read() {
@@ -23,5 +24,9 @@ export class JsonService {
     });
 
     return stream;
+  }
+
+  private getRandomLengthFromRange(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1) + min);
   }
 }

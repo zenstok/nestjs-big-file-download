@@ -9,7 +9,7 @@ export class BufferService {
   getBigFile(res: Response) {
     const jsonStream = this.jsonService.createBigJsonFileStream();
 
-    const sendingChunkSize = 2 * 1024 * 1024; // 2 MiBs // make sure you set the sending chunk sizei bigger than the chunk buffer size to avoid iterating while loop
+    const sendingChunkSize = 50 * 1024 * 1024; // 50 MiBs, Make sure to set the sending chunk size larger than the chunk buffer size to avoid unnecessary iterations in the while loop.
     let currentChunkSize = 0;
     let sendingChunk = Buffer.alloc(sendingChunkSize);
 
@@ -17,30 +17,28 @@ export class BufferService {
       while (chunk.byteLength > 0) {
         const availableSpace = sendingChunkSize - currentChunkSize;
 
-        if (chunk.byteLength > availableSpace) {
-          // Fill the remaining space in the sendingChunk
-          chunk
-            .subarray(0, availableSpace)
-            .copy(sendingChunk, currentChunkSize);
-          currentChunkSize += availableSpace;
-
-          // Send the filled buffer
-          const writable = res.write(sendingChunk);
-
-          if (!writable) {
-            jsonStream.pause();
-          }
-
-          // Reset for the next chunk
-          sendingChunk = Buffer.alloc(sendingChunkSize);
-          currentChunkSize = 0;
-          chunk = chunk.subarray(availableSpace); // Process the rest of the chunk
-        } else {
+        if (chunk.byteLength <= availableSpace) {
           // If the chunk fits within the remaining space
           chunk.copy(sendingChunk, currentChunkSize);
           currentChunkSize += chunk.byteLength;
           break;
         }
+
+        // Fill the remaining space in the sendingChunk
+        chunk.subarray(0, availableSpace).copy(sendingChunk, currentChunkSize);
+        currentChunkSize += availableSpace;
+
+        // Send the filled buffer
+        const writable = res.write(sendingChunk);
+
+        if (!writable) {
+          jsonStream.pause();
+        }
+
+        // Reset for the next chunk
+        sendingChunk = Buffer.alloc(sendingChunkSize);
+        currentChunkSize = 0;
+        chunk = chunk.subarray(availableSpace); // Process the rest of the chunk
       }
     });
 
